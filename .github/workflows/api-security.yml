@@ -1,0 +1,93 @@
+name: API Automation + ZAP Security Scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      active_scan:
+        description: "Run ZAP active scan (only for targets you own)"
+        type: boolean
+        default: false
+
+env:
+  ZAP_PORT: 8081
+  TARGET: https://jsonplaceholder.typicode.com   # change to your staging URL
+
+jobs:
+  api-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Generate one-time ZAP API key
+        run: |
+          KEY=$(openssl rand -hex 16)
+          echo "::add-mask::$KEY"
+          echo "ZAP_API_KEY=$KEY" >> "$GITHUB_ENV"
+
+      - name: Start ZAP
+        run: |
+          docker run -d --name zap -u zap \
+            -p ${ZAP_PORT}:8080 \
+            -v "$GITHUB_WORKSPACE":/zap/wrk:ro \
+            ghcr.io/zaproxy/zaproxy:stable zap.sh -daemon \
+            -host 0.0.0.0 -port 8080 \
+            -config api.key=${ZAP_API_KEY} \
+            -config api.addrs.addr.name=.* \
+            -config api.addrs.addr.regex=true
+
+      - name: Wait for ZAP
+        run: |
+          for i in $(seq 1 40); do
+            curl -sf "http://127.0.0.1:${ZAP_PORT}/JSON/core/view/version/?apikey=${ZAP_API_KEY}" >/dev/null && exit 0
+            sleep 3
+          done
+          docker logs zap; exit 1
+
+      - name: Run API tests through ZAP
+        env:
+          USE_ZAP: "true"
+          ZAP_ADDRESS: http://127.0.0.1:${{ env.ZAP_PORT }}
+          AUTH_TOKEN: ${{ secrets.AUTH_TOKEN }}
+        run: |
+          mkdir -p reports
+          pytest -v --junitxml=reports/test-results.xml
+
+      - name: ZAP spec import, scan, report
+        env:
+          ZAP_ADDRESS: http://127.0.0.1:${{ env.ZAP_PORT }}
+          ZAP_SPEC_PATH: /zap/wrk/openapi.json
+          AUTH_TOKEN: ${{ secrets.AUTH_TOKEN }}
+          ACTIVE_SCAN: ${{ github.event.inputs.active_scan || 'false' }}
+          FAIL_ON: High
+        run: python zap_scan.py
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-and-test-reports
+          path: |
+            zap-report.html
+            zap-report.json
+            reports/
+          retention-days: 14
+
+      - name: ZAP logs on failure
+        if: failure()
+        run: docker logs zap | tail -100
+
+      - name: Stop ZAP
+        if: always()
+        run: docker rm -f zap

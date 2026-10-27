@@ -1,0 +1,146 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "JSONPlaceholder API",
+    "version": "1.0.0",
+    "description": "Public fake REST API used for practice and ZAP scanning."
+  },
+  "servers": [{ "url": "https://jsonplaceholder.typicode.com" }],
+  "paths": {
+    "/posts": {
+      "get": {
+        "summary": "List posts",
+        "parameters": [
+          { "name": "userId", "in": "query", "required": false, "schema": { "type": "integer", "example": 1 } }
+        ],
+        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Post" } } } } } }
+      },
+      "post": {
+        "summary": "Create a post",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PostInput" } } }
+        },
+        "responses": { "201": { "description": "Created" } }
+      }
+    },
+    "/posts/{id}": {
+      "parameters": [
+        { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "example": 1 } }
+      ],
+      "get": {
+        "summary": "Get a post",
+        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Post" } } } }, "404": { "description": "Not found" } }
+      },
+      "put": {
+        "summary": "Replace a post",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PostInput" } } }
+        },
+        "responses": { "200": { "description": "OK" } }
+      },
+      "patch": {
+        "summary": "Update part of a post",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "properties": { "title": { "type": "string", "example": "patched title" } } } } }
+        },
+        "responses": { "200": { "description": "OK" } }
+      },
+      "delete": {
+        "summary": "Delete a post",
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/posts/{id}/comments": {
+      "get": {
+        "summary": "List comments of a post",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "example": 1 } }
+        ],
+        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Comment" } } } } } }
+      }
+    },
+    "/comments": {
+      "get": {
+        "summary": "List comments, optionally filtered by post",
+        "parameters": [
+          { "name": "postId", "in": "query", "required": false, "schema": { "type": "integer", "example": 1 } }
+        ],
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/users": {
+      "get": {
+        "summary": "List users",
+        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/User" } } } } } }
+      }
+    },
+    "/users/{id}": {
+      "get": {
+        "summary": "Get a user",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "example": 1 } }
+        ],
+        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/User" } } } } }
+      }
+    },
+    "/todos": {
+      "get": {
+        "summary": "List todos",
+        "parameters": [
+          { "name": "userId", "in": "query", "required": false, "schema": { "type": "integer", "example": 1 } },
+          { "name": "completed", "in": "query", "required": false, "schema": { "type": "boolean", "example": false } }
+        ],
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/albums": {
+      "get": {
+        "summary": "List albums",
+        "responses": { "200": { "description": "OK" } }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "PostInput": {
+        "type": "object",
+        "required": ["title", "body", "userId"],
+        "properties": {
+          "title": { "type": "string", "example": "zap test title" },
+          "body": { "type": "string", "example": "zap test body" },
+          "userId": { "type": "integer", "example": 1 }
+        }
+      },
+      "Post": {
+        "allOf": [
+          { "$ref": "#/components/schemas/PostInput" },
+          { "type": "object", "properties": { "id": { "type": "integer", "example": 1 } } }
+        ]
+      },
+      "Comment": {
+        "type": "object",
+        "properties": {
+          "postId": { "type": "integer", "example": 1 },
+          "id": { "type": "integer", "example": 1 },
+          "name": { "type": "string" },
+          "email": { "type": "string", "example": "test@example.com" },
+          "body": { "type": "string" }
+        }
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "example": 1 },
+          "name": { "type": "string" },
+          "username": { "type": "string" },
+          "email": { "type": "string", "example": "test@example.com" },
+          "phone": { "type": "string" },
+          "website": { "type": "string" }
+        }
+      }
+    }
+  }
+}
